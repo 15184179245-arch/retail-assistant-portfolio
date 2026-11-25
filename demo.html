@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>零售助手｜模拟演示</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f7f8;color:#182731;font:16px/1.6 system-ui,sans-serif}.wrap{max-width:900px;margin:auto;padding:30px 18px}header{padding:24px;background:#132f38;color:white;border-radius:16px}h1{margin:0;font-size:1.75rem}header p{margin:6px 0 0;color:#d7e7e7}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.card{padding:18px;background:#fff;border:1px solid #dbe6e7;border-radius:14px}h2{font-size:1.12rem;margin:0 0 12px}input,button{font:inherit;border-radius:8px;padding:6px 10px}input{border:1px solid #9caeb2;width:100%}button{background:#166b66;color:#fff;border:0;cursor:pointer}button:disabled{opacity:.5;cursor:default}ul{padding:0;list-style:none}.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #e4ecee}small{display:block;color:#52676d}.qty{width:65px}pre{white-space:pre-wrap;background:#f4f7f8;padding:10px;border-radius:8px}footer{margin-top:14px;color:#52676d}@media(max-width:620px){.grid{grid-template-columns:1fr}}
+</style>
+<main class="wrap">
+<header><h1>零售门店助手</h1><p>面试展示 · 模拟商品、库存和结算，不连接真实门店</p></header>
+<div class="grid">
+<section class="card"><h2>1. 查商品和库存</h2><label for="q">按名称、规格或编号查询</label><input id="q" placeholder="例：螺丝、M4、D002"><ul id="results"></ul></section>
+<section class="card"><h2>2. 预览开单</h2><ul id="basket"></ul><p>合计：<strong id="total">¥0.00</strong></p><button id="preview" disabled>生成模拟小票</button><pre id="receipt" hidden aria-live="polite"></pre></section>
+</div>
+<footer>演示数据 · 不扣减库存、不收款、不向打印机发送任务</footer>
+</main>
+<script>
+const items=[{id:'D001',name:'演示螺丝 M4',cents:120,stock:12},{id:'D002',name:'演示螺丝 M6',cents:180,stock:8},{id:'D003',name:'演示绝缘胶带',cents:350,stock:6},{id:'D004',name:'演示垫片 M8',cents:90,stock:0}];
+const cart=new Map(), by=id=>document.getElementById(id), money=c=>'¥'+(c/100).toFixed(2);
+const matching=q=>items.filter(i=>(i.id+' '+i.name).toLowerCase().includes(q.trim().toLowerCase()));
+function setQty(i,v){const n=Math.max(0,Math.min(i.stock,Math.trunc(Number(v))||0));n?cart.set(i.id,n):cart.delete(i.id);return n;}
+const lines=()=>items.filter(i=>cart.has(i.id));
+const sum=()=>lines().reduce((a,i)=>a+i.cents*cart.get(i.id),0);
+function node(tag,value){const n=document.createElement(tag);if(value!==undefined)n.textContent=value;return n;}
+function refresh(){
+ const rs=by('results'), basket=by('basket'), matches=matching(by('q').value);rs.replaceChildren();basket.replaceChildren();by('receipt').hidden=true;
+ if(!matches.length)rs.append(node('li','当前演示商品里没有匹配项。'));
+ for(const i of matches){const row=node('li'), t=node('div',i.name), b=node('button',i.stock?'加入':'无库存');row.className='row';t.append(node('small',i.id+' · '+money(i.cents)+' · 库存 '+i.stock));b.disabled=(cart.get(i.id)||0)>=i.stock;b.onclick=()=>{setQty(i,(cart.get(i.id)||0)+1);refresh()};row.append(t,b);rs.append(row);}
+ if(!cart.size)basket.append(node('li','尚未选商品。'));
+ for(const i of lines()){const row=node('li'), label=node('label',i.name), n=node('input'), del=node('button','移除');row.className='row';n.className='qty';n.type='number';n.min='1';n.max=i.stock;n.value=cart.get(i.id);n.setAttribute('aria-label',i.name+'数量');n.onchange=()=>{setQty(i,n.value);refresh()};del.onclick=()=>{setQty(i,0);refresh()};row.append(label,n,del);basket.append(row);}
+ by('total').textContent=money(sum());by('preview').disabled=!cart.size;
+}
+function receipt(){return ['模拟小票 · 不收款',...lines().map(i=>i.name+' × '+cart.get(i.id)+'  '+money(i.cents*cart.get(i.id))),'合计 '+money(sum())].join('\n');}
+by('q').addEventListener('input',refresh);by('preview').onclick=()=>{const e=by('receipt');e.textContent=receipt();e.hidden=false};refresh();
+</script>
+</html>
